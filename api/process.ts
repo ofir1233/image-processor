@@ -41,7 +41,7 @@ Requirements:
 CRITICAL: Reply with ONLY the raw SVG markup. Start with <svg and end with </svg>. No markdown, no code fences, no explanation.`
 
     const response = await groq.chat.completions.create({
-      model: 'llama-3.2-90b-vision-instruct',
+      model: 'llama-3.2-11b-vision-preview',
       max_tokens: 8192,
       messages: [
         {
