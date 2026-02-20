@@ -3,9 +3,23 @@ import './App.css'
 
 type UploadState = 'idle' | 'dragging' | 'ready' | 'processing'
 
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
+    reader.onload = () => {
+      const dataUrl = reader.result as string
+      resolve(dataUrl.split(',')[1])
+    }
+    reader.onerror = reject
+  })
+}
+
 export default function App() {
   const [uploadState, setUploadState] = useState<UploadState>('idle')
   const [image, setImage] = useState<{ file: File; url: string } | null>(null)
+  const [svgOutput, setSvgOutput] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const acceptFile = useCallback((file: File) => {
@@ -15,6 +29,8 @@ export default function App() {
       if (prev) URL.revokeObjectURL(prev.url)
       return { file, url }
     })
+    setSvgOutput(null)
+    setError(null)
     setUploadState('ready')
   }, [])
 
@@ -40,10 +56,32 @@ export default function App() {
     e.target.value = ''
   }, [acceptFile])
 
-  const handleProcess = useCallback(() => {
+  const handleProcess = useCallback(async () => {
     if (!image) return
     setUploadState('processing')
-    // Processing logic will be wired in later
+    setError(null)
+    setSvgOutput(null)
+
+    try {
+      const imageData = await fileToBase64(image.file)
+      const response = await fetch('/api/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageData, mimeType: image.file.type }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Processing failed')
+      }
+
+      setSvgOutput(data.svg)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong')
+    } finally {
+      setUploadState('ready')
+    }
   }, [image])
 
   const isProcessing = uploadState === 'processing'
@@ -112,8 +150,18 @@ export default function App() {
           )}
         </button>
 
-        {/* SVG Output Container — animated SVG will be injected here */}
-        <div className="svg-output" aria-label="SVG output" aria-live="polite" />
+        {/* Error message */}
+        {error && <p className="error-msg">{error}</p>}
+
+        {/* SVG Output */}
+        {svgOutput && (
+          <div
+            className="svg-output"
+            aria-label="SVG output"
+            aria-live="polite"
+            dangerouslySetInnerHTML={{ __html: svgOutput }}
+          />
+        )}
       </main>
     </div>
   )

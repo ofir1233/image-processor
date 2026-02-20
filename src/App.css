@@ -214,6 +214,20 @@
   display: none;
 }
 
+/* ── Error Message ───────────────────────────────────────── */
+.error-msg {
+  margin: 0;
+  padding: 0.65rem 1rem;
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 10px;
+  background: color-mix(in srgb, #ef4444 12%, transparent);
+  border: 1px solid color-mix(in srgb, #ef4444 30%, transparent);
+  color: #dc2626;
+  font-size: 0.875rem;
+  text-align: center;
+}
+
 /* ── Accessibility ───────────────────────────────────────── */
 .sr-only {
   position: absolute;
