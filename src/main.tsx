@@ -1,10 +1,22 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { BrowserRouter } from 'react-router-dom'
+import { ClerkProvider } from '@clerk/clerk-react'
 import './index.css'
 import App from './App.tsx'
 
+const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string
+
+if (!publishableKey) {
+  throw new Error('Missing VITE_CLERK_PUBLISHABLE_KEY — add it to .env.local')
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ClerkProvider publishableKey={publishableKey} afterSignOutUrl="/sign-in">
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </ClerkProvider>
   </StrictMode>,
 )

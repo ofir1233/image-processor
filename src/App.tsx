@@ -1,4 +1,8 @@
 import { useState, useCallback, useRef } from 'react'
+import { Routes, Route, Navigate } from 'react-router-dom'
+import { SignedIn, SignedOut, UserButton } from '@clerk/clerk-react'
+import SignInPage from './pages/SignInPage'
+import SignUpPage from './pages/SignUpPage'
 import './App.css'
 
 type UploadState = 'idle' | 'dragging' | 'ready' | 'processing'
@@ -16,6 +20,24 @@ function fileToBase64(file: File): Promise<string> {
 }
 
 export default function App() {
+  return (
+    <Routes>
+      <Route path="/sign-in/*" element={<SignInPage />} />
+      <Route path="/sign-up/*" element={<SignUpPage />} />
+      <Route
+        path="/*"
+        element={
+          <>
+            <SignedIn><Processor /></SignedIn>
+            <SignedOut><Navigate to="/sign-in" replace /></SignedOut>
+          </>
+        }
+      />
+    </Routes>
+  )
+}
+
+function Processor() {
   const [uploadState, setUploadState] = useState<UploadState>('idle')
   const [image, setImage] = useState<{ file: File; url: string } | null>(null)
   const [svgOutput, setSvgOutput] = useState<string | null>(null)
@@ -89,8 +111,13 @@ export default function App() {
   return (
     <div className="layout">
       <header className="header">
-        <h1 className="header__title">Image Processor</h1>
-        <p className="header__sub">Upload an image to get started</p>
+        <div className="header__center">
+          <h1 className="header__title">Image Processor</h1>
+          <p className="header__sub">Upload an image to get started</p>
+        </div>
+        <div className="header__actions">
+          <UserButton />
+        </div>
       </header>
 
       <main className="main">
