@@ -1,7 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import Groq from 'groq-sdk'
 
-// Raise the body-parser limit so large images don't get rejected (default is 4.5 MB)
 export const config = {
   api: {
     bodyParser: {
@@ -21,14 +20,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Missing imageData or mimeType' })
   }
 
-  const apiKey = process.env.GEMINI_API_KEY
+  const apiKey = process.env.GROQ_API_KEY
   if (!apiKey) {
-    return res.status(500).json({ error: 'GEMINI_API_KEY is not configured on the server' })
+    return res.status(500).json({ error: 'GROQ_API_KEY is not configured on the server' })
   }
 
   try {
-    const genAI = new GoogleGenerativeAI(apiKey)
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' })
+    const groq = new Groq({ apiKey })
 
     const prompt = `You are an expert SVG artist and animator.
 Analyze the provided image and create a beautiful, self-contained animated SVG inspired by its content, colors, shapes, and mood.
@@ -42,12 +40,24 @@ Requirements:
 
 CRITICAL: Reply with ONLY the raw SVG markup. Start with <svg and end with </svg>. No markdown, no code fences, no explanation.`
 
-    const result = await model.generateContent([
-      { text: prompt },
-      { inlineData: { data: imageData, mimeType } },
-    ])
+    const response = await groq.chat.completions.create({
+      model: 'llama-3.2-90b-vision-preview',
+      max_tokens: 8192,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            {
+              type: 'image_url',
+              image_url: { url: `data:${mimeType};base64,${imageData}` },
+            },
+          ],
+        },
+      ],
+    })
 
-    let svg = result.response.text().trim()
+    let svg = (response.choices[0].message.content ?? '').trim()
 
     // Strip markdown code fences if the model added them
     svg = svg.replace(/^```(?:svg|xml)?\s*/i, '').replace(/\s*```$/, '').trim()
@@ -59,8 +69,7 @@ CRITICAL: Reply with ONLY the raw SVG markup. Start with <svg and end with </svg
     return res.status(200).json({ svg })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
-    console.error('Gemini API error:', message)
-    // Return the real error message so it's visible in the UI during debugging
+    console.error('Groq API error:', message)
     return res.status(500).json({ error: message })
   }
 }
