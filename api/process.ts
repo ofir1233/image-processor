@@ -1,6 +1,15 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
+// Raise the body-parser limit so large images don't get rejected (default is 4.5 MB)
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '20mb',
+    },
+  },
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
@@ -44,12 +53,14 @@ CRITICAL: Reply with ONLY the raw SVG markup. Start with <svg and end with </svg
     svg = svg.replace(/^```(?:svg|xml)?\s*/i, '').replace(/\s*```$/, '').trim()
 
     if (!svg.startsWith('<svg')) {
-      return res.status(500).json({ error: 'Model did not return a valid SVG' })
+      return res.status(500).json({ error: 'Model did not return a valid SVG', raw: svg.slice(0, 300) })
     }
 
     return res.status(200).json({ svg })
-  } catch (err) {
-    console.error('Gemini API error:', err)
-    return res.status(500).json({ error: 'Failed to generate SVG from image' })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('Gemini API error:', message)
+    // Return the real error message so it's visible in the UI during debugging
+    return res.status(500).json({ error: message })
   }
 }
